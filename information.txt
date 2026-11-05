@@ -1,6 +1,24 @@
-"python -m venv .venv" use for create a virtual environment.
-To activate the V-environment ".venv\Scripts\activate.bat" or ".venv\Scripts\activate.bat" to deactive.
-"pip install opencv-contrib-python" to install opencv
-To download the official "haarcascade_frontalface_default.xml" file directly from the "OpenCV GitHub Repository" for load the cv2
-save "haarcascade_frontalface_default.xml" to project file directly
-install "pip install pillow"
+=== VisionGuard Enterprise — Face Recognition Setup & Usage Guide ===
+
+1. Create and Activate Virtual Environment:
+   - Create:     python -m venv .venv
+   - Activate:   .venv\Scripts\activate
+   - Deactivate: deactivate
+
+2. Install Dependencies:
+   - pip install -r requirements.txt
+   (Installs opencv-contrib-python, pillow, and numpy)
+
+3. Launch Modern Enterprise GUI Application (Recommended):
+   - python app.py
+   Features:
+   - Simultaneous multi-person live face detection & recognition
+   - Built-in User Enrollment & Profile Manager (ID, Name, Age, Department, Role)
+   - One-click LBPH Model Training
+   - Real-time Attendance / Audit Logging with CSV Export
+   - Adjustable LBPH Distance Threshold & Camera Settings
+
+4. Standalone CLI Scripts (Optional):
+   - Enroll a user:                  python data_creater.py
+   - Train the LBPH model:           python trainer.py
+   - Run simultaneous recognition:   python detect.py

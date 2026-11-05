@@ -1,49 +1,62 @@
-import os
+from pathlib import Path
+from typing import List, Tuple
 
 import cv2
 import numpy as np
 from PIL import Image  # used for image opening and processing
 
-recognizer = (
-    cv2.face.LBPHFaceRecognizer_create()
-)  # Create the Local Binary Patterns Histograms (LBPH) face recognizer from our camera
-path_for_imges = "dataSet/user"  # Path to the dataset of user images
+from core.config import MODEL_PATH, USER_IMAGES_DIR, ensure_directories
+from core.face_engine import FaceRecognitionEngine, preprocess_face
+
+path_for_images = USER_IMAGES_DIR  # Path to the dataset of user images
 
 
-def getImagesWithDb(path):
-    imagePaths = [
-        os.path.join(path, f) for f in os.listdir(path)
-    ]  # Get the paths of all images in the dataset
-    faceSamples = []  # List to hold the face samples
-    ids = []  # List to hold the corresponding IDs
+def getImagesWithDb(path: Path = USER_IMAGES_DIR) -> Tuple[np.ndarray, List[np.ndarray]]:
+    """Load, validate, and preprocess all user face images for LBPH training."""
+    ensure_directories()
+    path = Path(path)
 
-    for imagePath in imagePaths:
-        PIL_img = Image.open(imagePath).convert(
-            "L"
-        )  # "L" luminance mode - Convert the image to grayscale
-        img_numpy = np.array(PIL_img, "uint8")  # Convert the image to a numpy array
+    valid_exts = {".jpg", ".jpeg", ".png", ".bmp"}
+    image_paths = sorted(
+        [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in valid_exts]
+    )
 
-        id = int(
-            os.path.split(imagePath)[-1].split(".")[1]
-        )  # Extract the ID from the filename
+    face_samples: List[np.ndarray] = []  # List to hold the face samples
+    ids: List[int] = []  # List to hold the corresponding IDs
 
-        faceSamples.append(img_numpy)  # Append the face sample to the list
-        ids.append(id)  # Append the corresponding ID to the list
+    for image_path in image_paths:
+        parts = image_path.name.split(".")
+        if len(parts) < 3 or parts[0].lower() != "user":
+            continue
 
-        cv2.imshow("Training", img_numpy)  # Display the image being processed
-        cv2.waitKey(100)  # Wait for a short period before processing the next image
+        try:
+            user_id = int(parts[1])  # Extract the integer ID from User.<id>.<sample>.jpg
+        except ValueError:
+            continue
 
-    return (
-        np.array(ids),
-        faceSamples,
-    )  # Return the face samples and their corresponding IDs
+        with Image.open(image_path) as pil_img:
+            gray_img = pil_img.convert("L")  # "L" luminance mode - Convert the image to grayscale
+            img_numpy = np.array(gray_img, "uint8")  # Convert the image to a numpy array
+
+        processed = preprocess_face(img_numpy, apply_equalization=True)
+        face_samples.append(processed)
+        ids.append(user_id)
+
+    return np.array(ids, dtype=np.int32), face_samples
 
 
-ids, faces = getImagesWithDb(
-    path_for_imges
-)  # Get the face samples and IDs from the dataset
+def main():
+    ensure_directories()
+    engine = FaceRecognitionEngine()
+    num_images, num_users = engine.train_model(
+        dataset_dir=USER_IMAGES_DIR,
+        model_path=MODEL_PATH,
+    )
+    cv2.destroyAllWindows()
+    print(
+        f"Training complete: {num_images} face images across {num_users} user(s) -> {MODEL_PATH}"
+    )
 
-recognizer.train(faces, ids)  # Train the recognizer with the face samples and IDs
-recognizer.save("recognizer/training_data.yml")  # Save the trained model to a file
 
-cv2.destroyAllWindows()  # Close all OpenCV windows
+if __name__ == "__main__":
+    main()

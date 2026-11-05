@@ -1,99 +1,69 @@
-import sqlite3
+import time
+from typing import Optional
 
 import cv2
 
-face_detect = cv2.CascadeClassifier(
-    "haarcascade_frontalface_default.xml"
-)  # Load the built-in face detector
+from core.database import DatabaseManager, PersonProfile
+from core.face_engine import FaceRecognitionEngine, draw_enterprise_hud
 
-cam = cv2.VideoCapture(0)  # Start the webcam for capturing video
-
-recognizer = (
-    cv2.face.LBPHFaceRecognizer_create()
-)  # Create the Local Binary Patterns Histograms (LBPH) face recognizer
-recognizer.read("recognizer/training_data.yml")  # Load the trained model from a file
+# Initialize shared enterprise database & recognition engine (with in-memory profile caching)
+db_manager = DatabaseManager()
+engine = FaceRecognitionEngine(db_manager)
 
 
-def detect_face(id):
-    conn = sqlite3.connect("dataset/FaceBase.db")  # Connect to the database
-    cursor = conn.execute(
-        "SELECT * FROM People WHERE ID = ?", (id,)
-    )  # Execute a query to fetch records from the People table
-
-    profile = None  # Initialize the profile variable to None
-    for row in cursor:
-        profile = row  # If a record is found, assign it to the profile variable
-    conn.close()  # Close the database connection
-
-    return profile  # Return the profile (record) if found, otherwise return None
+def detect_face(person_id: int) -> Optional[PersonProfile]:
+    """Fast O(1) in-memory profile lookup by person ID."""
+    return db_manager.get_person(person_id)
 
 
-while True:
-    ret, img = cam.read()  # Read a frame from the webcam
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Convert the frame to grayscale
+def main():
+    if not engine.model_loaded:
+        print(
+            "Warning: Trained model 'recognizer/training_data.yml' not found. "
+            "Faces will be detected as Unknown until you run 'python trainer.py' or train via 'python app.py'."
+        )
 
-    faces = face_detect.detectMultiScale(
-        gray, scaleFactor=1.3, minNeighbors=5
-    )  # Detect faces in the grayscale frame
+    cam = cv2.VideoCapture(0)  # Start the webcam for capturing video
+    if not cam.isOpened():
+        raise RuntimeError("Error: Could not open webcam.")
 
-    for x, y, w, h in faces:
-        cv2.rectangle(
-            img, (x, y), (x + w, y + h), (0, 255, 0), 2
-        )  # Draw a rectangle around the detected face
+    fps = 0.0
+    last_ts = time.perf_counter()
 
-        id, confidence = recognizer.predict(
-            gray[y : y + h, x : x + w]
-        )  # Predict the ID of the detected face
+    print("Simultaneous Multi-Person Face Recognition running... Press 'q' to exit.")
 
-        profile = detect_face(
-            id
-        )  # Fetch the profile (record) from the database based on the predicted ID
+    while True:
+        ret, img = cam.read()  # Read a frame from the webcam
+        if not ret or img is None:
+            print("Warning: Failed to read frame from webcam.")
+            break
 
-        if confidence < 100:  # If confidence is less than 100, consider it a match
-            name = f"Name: {profile[1]}"  # Format the name for display
-            age = f"Age: {profile[2]}"  # Format the age for display
-            matching = f"{round(100 - confidence)}%"  # Calculate and format the confidence percentage
-        else:
-            name = "Unknown"  # If not a match, label as Unknown
-            age = "Age: Unknown"  # If not a match, label age as Unknown
-            matching = f"{round(100 - confidence)}%"  # Calculate and format the confidence percentage
+        now = time.perf_counter()
+        dt = max(now - last_ts, 1e-4)
+        last_ts = now
+        fps = (0.85 * fps + 0.15 * (1.0 / dt)) if fps > 0 else (1.0 / dt)
 
-        cv2.putText(
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # Convert the frame to grayscale
+
+        # Detect and recognize ALL faces simultaneously in the current frame
+        detections = engine.recognize_faces_in_frame(gray, record_attendance=True)
+
+        # Render modern HUD boxes, names, ages, departments, and match percentages
+        annotated = draw_enterprise_hud(
             img,
-            str(name),
-            (x + 5, y + h + 25),
-            cv2.FONT_HERSHEY_COMPLEX,
-            1,
-            (255, 255, 255),
-            1,
-        )  # Display the name on the frame
-        cv2.putText(
-            img,
-            str(age),
-            (x + 5, y + h + 50),
-            cv2.FONT_HERSHEY_COMPLEX,
-            1,
-            (255, 255, 255),
-            1,
-        )  # Display the age on the frame
-        # cv2.putText(
-        #     img,
-        #     str(matching),
-        #     (x + 5, y + h + 75),
-        #     cv2.FONT_HERSHEY_COMPLEX,
-        #     1,
-        #     (255, 255, 255),
-        #     1,
-        # )  # Display the confidence percentage on the frame
+            detections,
+            fps=fps,
+            model_loaded=engine.model_loaded,
+        )
 
-        cv2.rectangle(
-            img, (x, y), (x + w, y + h), (0, 255, 0), 2
-        )  # Draw a rectangle around the detected face
+        cv2.imshow("VisionGuard — Simultaneous Multi-Person Face Recognition", annotated)
 
-    cv2.imshow("Face", img)  # Display the frame with detected faces
+        if cv2.waitKey(1) & 0xFF == ord("q"):  # Exit if 'q' is pressed
+            break
 
-    if cv2.waitKey(1) & 0xFF == ord("q"):  # Exit if 'q' is pressed
-        break
+    cam.release()  # Release the webcam resource
+    cv2.destroyAllWindows()  # Close all OpenCV windows
 
-cam.release()  # Release the webcam resource
-cv2.destroyAllWindows()  # Close all OpenCV windows
+
+if __name__ == "__main__":
+    main()
