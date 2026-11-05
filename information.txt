@@ -1,5 +1,6 @@
 "python -m venv .venv" use for create a virtual environment.
 To activate the V-environment ".venv\Scripts\activate.bat" or ".venv\Scripts\activate.bat" to deactive.
-"pip install opencv-python" to install opencv
+"pip install opencv-contrib-python" to install opencv
 To download the official "haarcascade_frontalface_default.xml" file directly from the "OpenCV GitHub Repository" for load the cv2
 save "haarcascade_frontalface_default.xml" to project file directly
+install "pip install pillow"
