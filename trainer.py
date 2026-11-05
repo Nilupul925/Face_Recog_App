@@ -34,4 +34,15 @@ def getImagesWithDb(path):
         cv2.imshow("Training", img_numpy)  # Display the image being processed
         cv2.waitKey(10)  # Wait for a short period before processing the next image
 
-    return faceSamples, ids  # Return the face samples and their corresponding IDs
+    return (
+        np.array(ids),
+        faceSamples,
+    )  # Return the face samples and their corresponding IDs
+
+
+ids, faces = getImagesWithDb(path)  # Get the face samples and IDs from the dataset
+
+recognizer.train(faces, ids)  # Train the recognizer with the face samples and IDs
+recognizer.write("trainer/trainer.yml")  # Save the trained model to a file
+
+cv2.destroyAllWindows()  # Close all OpenCV windows
