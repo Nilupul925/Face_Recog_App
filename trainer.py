@@ -2,7 +2,7 @@ import os
 
 import cv2
 import numpy as np
-from PIL import Image  # used for image processing
+from PIL import Image  # used for image opening and processing
 
 recognizer = (
     cv2.face.LBPHFaceRecognizer_create()
@@ -31,7 +31,7 @@ def getImagesWithDb(path):
         ids.append(id)  # Append the corresponding ID to the list
 
         cv2.imshow("Training", img_numpy)  # Display the image being processed
-        cv2.waitKey(10)  # Wait for a short period before processing the next image
+        cv2.waitKey(100)  # Wait for a short period before processing the next image
 
     return (
         np.array(ids),
