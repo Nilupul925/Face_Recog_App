@@ -1,5 +1,4 @@
 import os
-from os import path
 
 import cv2
 import numpy as np
@@ -8,7 +7,7 @@ from PIL import Image  # used for image processing
 recognizer = (
     cv2.face.LBPHFaceRecognizer_create()
 )  # Create the Local Binary Patterns Histograms (LBPH) face recognizer from our camera
-path = "dataSet/user"  # Path to the dataset of user images
+path_for_imges = "dataSet/user"  # Path to the dataset of user images
 
 
 def getImagesWithDb(path):
@@ -40,9 +39,11 @@ def getImagesWithDb(path):
     )  # Return the face samples and their corresponding IDs
 
 
-ids, faces = getImagesWithDb(path)  # Get the face samples and IDs from the dataset
+ids, faces = getImagesWithDb(
+    path_for_imges
+)  # Get the face samples and IDs from the dataset
 
 recognizer.train(faces, ids)  # Train the recognizer with the face samples and IDs
-recognizer.write("trainer/trainer.yml")  # Save the trained model to a file
+recognizer.save("recognizer/training_data.yml")  # Save the trained model to a file
 
 cv2.destroyAllWindows()  # Close all OpenCV windows
