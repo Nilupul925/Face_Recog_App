@@ -1,0 +1,15 @@
+# Virtual Environment & Python Bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Face Dataset, SQLite Database & Trained Recognizer Models
+dataSet/
+dataset/
+recognizer/*.yml
+exports/
+*.db
+*.sqlite3
+
+*.bat
