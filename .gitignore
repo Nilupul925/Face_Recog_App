@@ -11,3 +11,5 @@ recognizer/*.yml
 exports/
 *.db
 *.sqlite3
+
+*.bat
